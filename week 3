@@ -1,0 +1,69 @@
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.metrics import (accuracy_score, precision_score,
+                             recall_score, classification_report,
+                             confusion_matrix)
+import matplotlib.pyplot as plt
+import joblib  # optional, for saving the trained model
+
+# For reproducibility
+RANDOM_STATE = 42
+iris = load_iris()
+# features as DataFrame for convenience
+X = pd.DataFrame(iris.data, columns=iris.feature_names)
+# create a Series of string labels (so we demonstrate encoding explicitly)
+y = pd.Series(iris.target_names[iris.target], name='species')
+
+print("Feature shape:", X.shape)
+print("First rows:\n", X.head())
+print("Label example:\n", y.head())
+# Quick check for missing values
+print("Missing values per column:\n", X.isnull().sum())
+
+# If missing values exist, we can impute them (mean strategy shown here)
+if X.isnull().values.any():
+    imputer = SimpleImputer(strategy='mean')
+    X = pd.DataFrame(imputer.fit_transform(X), columns=X.columns)
+    print("Missing values were imputed using column means.")
+else:
+    print("No missing values found. Skipping imputation.")
+    # Convert string labels to integers with LabelEncoder
+le = LabelEncoder()
+y_encoded = le.fit_transform(y)  # 0,1,2
+
+print("Label classes:", le.classes_)
+print("Encoded labels example:", y_encoded[:5])
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y_encoded, test_size=0.20, random_state=RANDOM_STATE, stratify=y_encoded
+)
+
+print("Train shape:", X_train.shape)
+print("Test shape:", X_test.shape)
+clf = DecisionTreeClassifier(random_state=RANDOM_STATE)
+clf.fit(X_train, y_train)
+# Predictions
+y_pred = clf.predict(X_test)
+
+# Accuracy
+acc = accuracy_score(y_test, y_pred)
+
+# Precision and recall (multiclass) — explained below
+precision_macro = precision_score(y_test, y_pred, average='macro')
+recall_macro = recall_score(y_test, y_pred, average='macro')
+
+print(f"Accuracy: {acc:.4f}")
+print(f"Precision (macro): {precision_macro:.4f}")
+print(f"Recall (macro): {recall_macro:.4f}\n")
+
+# Detailed per-class metrics
+print("Classification report:\n")
+print(classification_report(y_test, y_pred, target_names=le.classes_))
+
+# Confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+print("Confusion matrix:\n", cm)
